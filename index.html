@@ -1,26 +1,74 @@
-<html lang="en">
+﻿<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' blob: data:">
     <title>FlipHTML5 Downloader</title>
     <link rel="stylesheet" href="bootstrap.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="form-group">
-        <label for="url">URL</label>
-        <input type="text" class='form-control' id="url-input">
+    <div class="app">
+        <header class="app-header">
+            <h1>FlipHTML5 Downloader</h1>
+            <p class="app-subtitle">Flipbook sayfalarını tek bir PDF dosyasına dönüştürün</p>
+        </header>
+
+        <main class="app-card">
+            <div class="form-group">
+                <label for="url-input">Kitap URL'si</label>
+                <input type="text" class="form-control" id="url-input" placeholder="https://online.fliphtml5.com/kullanici/kitap-adi/">
+            </div>
+
+            <div class="form-group">
+                <label for="page-from">Sayfa aralığı <span class="label-hint">(boş = tüm sayfalar)</span></label>
+                <div class="page-range-row">
+                    <input type="number" class="form-control" id="page-from" min="1" placeholder="Başlangıç">
+                    <span class="page-range-sep">–</span>
+                    <input type="number" class="form-control" id="page-to" min="1" placeholder="Bitiş">
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-download" id="download-button">
+                <span class="btn-label">PDF Oluştur</span>
+            </button>
+
+            <section id="progress-panel" class="progress-panel hidden" aria-live="polite">
+                <div class="progress-header">
+                    <span id="progress-status">Hazırlanıyor…</span>
+                    <span id="progress-fraction" class="progress-fraction"></span>
+                </div>
+                <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+                <p id="progress-detail" class="progress-detail"></p>
+            </section>
+
+            <section id="result-panel" class="result-panel hidden" aria-live="polite">
+                <div class="result-success">
+                    <span class="result-icon" aria-hidden="true">✓</span>
+                    <div>
+                        <p class="result-title">PDF hazır</p>
+                        <p id="result-filename" class="result-filename"></p>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button type="button" class="btn btn-success" id="open-pdf-button">PDF'i Aç</button>
+                    <button type="button" class="btn btn-outline" id="show-folder-button">Klasörde Göster</button>
+                    <button type="button" class="btn btn-outline" id="save-as-button">Farklı Kaydet…</button>
+                </div>
+            </section>
+
+            <section id="error-panel" class="error-panel hidden" role="alert">
+                <p id="error-message"></p>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <p>Çıktı dosyası uygulama klasörüne kaydedilir. İşlem bitince PDF'i açabilir veya başka bir konuma kopyalayabilirsiniz.</p>
+        </footer>
     </div>
-    <div class="form-group">
-        <label for="page-from">Sayfa aralığı (boş = tüm sayfalar)</label>
-        <div class="page-range-row">
-            <input type="number" class="form-control" id="page-from" min="1" placeholder="Başlangıç">
-            <span class="page-range-sep">–</span>
-            <input type="number" class="form-control" id="page-to" min="1" placeholder="Bitiş">
-        </div>
-    </div>
-    <button type="button" class="btn-success" id = 'download-button'>Download</button>
-    <script src='view.js'></script>
+    <script src="view.js"></script>
 </body>
 </html>

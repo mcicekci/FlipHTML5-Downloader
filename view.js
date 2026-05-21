@@ -1,4 +1,4 @@
-/* jshint esversion: 6 */
+﻿/* jshint esversion: 6 */
 
 if (typeof require === 'undefined') {
 
@@ -14,20 +14,39 @@ const path = require('path');
 
 const request = require('request');
 
-const PDFKit = require('pdfkit');
-
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, shell, remote } = require('electron');
+const dialog = remote.dialog;
 
 const urlInput = document.getElementById('url-input');
 const pageFromInput = document.getElementById('page-from');
 const pageToInput = document.getElementById('page-to');
 const downloadButton = document.getElementById('download-button');
+const progressPanel = document.getElementById('progress-panel');
+const progressStatus = document.getElementById('progress-status');
+const progressFraction = document.getElementById('progress-fraction');
+const progressBar = document.getElementById('progress-bar');
+const progressDetail = document.getElementById('progress-detail');
+const progressTrack = document.querySelector('.progress-track');
+const resultPanel = document.getElementById('result-panel');
+const resultFilename = document.getElementById('result-filename');
+const errorPanel = document.getElementById('error-panel');
+const errorMessage = document.getElementById('error-message');
+const openPdfButton = document.getElementById('open-pdf-button');
+const showFolderButton = document.getElementById('show-folder-button');
+const saveAsButton = document.getElementById('save-as-button');
 
 const baseDir = __dirname + '/';
+let lastPdfPath = '';
+let progressPhase = 'idle';
+let progressCurrent = 0;
+let progressTotal = 0;
 
 
 
 downloadButton.onclick = downloadButtonClicked;
+openPdfButton.onclick = () => openPdf(lastPdfPath);
+showFolderButton.onclick = () => showPdfInFolder(lastPdfPath);
+saveAsButton.onclick = () => savePdfAs(lastPdfPath);
 
 
 
@@ -44,12 +63,105 @@ let imagesTempFolder = baseDir + 'temp/';
 
 
 
+function hidePanels() {
+    progressPanel.classList.add('hidden');
+    resultPanel.classList.add('hidden');
+    errorPanel.classList.add('hidden');
+}
+
+function setProgress(phase, current, total, statusText, detailText) {
+    progressPhase = phase;
+    progressCurrent = current;
+    progressTotal = total;
+    progressPanel.classList.remove('hidden');
+    resultPanel.classList.add('hidden');
+    errorPanel.classList.add('hidden');
+
+    progressStatus.textContent = statusText;
+    progressDetail.textContent = detailText || '';
+
+    if (total > 0) {
+        const pct = Math.min(100, Math.round((current / total) * 100));
+        progressBar.style.width = `${pct}%`;
+        progressFraction.textContent = `${current} / ${total}`;
+        progressTrack.setAttribute('aria-valuenow', String(pct));
+    } else {
+        progressBar.style.width = '0%';
+        progressFraction.textContent = '';
+        progressTrack.setAttribute('aria-valuenow', '0');
+    }
+}
+
+function setDownloadButtonLabel(text) {
+    const label = downloadButton.querySelector('.btn-label');
+    if (label) {
+        label.textContent = text;
+    }
+}
+
+function showWorking(statusText, detailText) {
+    downloadButton.disabled = true;
+    setDownloadButtonLabel('İşleniyor…');
+    hidePanels();
+    setProgress('working', 0, 0, statusText, detailText);
+    progressPanel.classList.remove('hidden');
+}
+
+function showSuccess(pdfPath, displayName) {
+    lastPdfPath = pdfPath;
+    downloadButton.disabled = false;
+    setDownloadButtonLabel('PDF Oluştur');
+    progressPanel.classList.add('hidden');
+    errorPanel.classList.add('hidden');
+    resultFilename.textContent = displayName;
+    resultPanel.classList.remove('hidden');
+}
+
 function showError(message) {
-
     console.error(message);
+    downloadButton.disabled = false;
+    setDownloadButtonLabel('PDF Oluştur');
+    progressPanel.classList.add('hidden');
+    resultPanel.classList.add('hidden');
+    errorMessage.textContent = message;
+    errorPanel.classList.remove('hidden');
+}
 
-    alert(message);
+function openPdf(pdfPath) {
+    if (!pdfPath || !fs.existsSync(pdfPath)) {
+        showError('PDF dosyası bulunamadı.');
+        return;
+    }
+    shell.openItem(pdfPath);
+}
 
+function showPdfInFolder(pdfPath) {
+    if (!pdfPath || !fs.existsSync(pdfPath)) {
+        showError('PDF dosyası bulunamadı.');
+        return;
+    }
+    shell.showItemInFolder(pdfPath);
+}
+
+function savePdfAs(pdfPath) {
+    if (!pdfPath || !fs.existsSync(pdfPath)) {
+        showError('PDF dosyası bulunamadı.');
+        return;
+    }
+    const dest = dialog.showSaveDialog({
+        defaultPath: path.basename(pdfPath),
+        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    if (!dest) {
+        return;
+    }
+    try {
+        fs.writeFileSync(dest, fs.readFileSync(pdfPath));
+        lastPdfPath = dest;
+        resultFilename.textContent = path.basename(dest);
+    } catch (err) {
+        showError(`Kaydedilemedi: ${err.message}`);
+    }
 }
 
 function parsePageRange(totalPages) {
@@ -385,101 +497,23 @@ async function resolvePageUrls(bookUrl, config, html) {
 
 
 
-function imageBufferForPdf(filePath) {
-
-    const ext = path.extname(filePath).toLowerCase();
-
-    const raw = fs.readFileSync(filePath);
-
-
-
-    if (ext !== '.webp') {
-
-        return Promise.resolve(raw);
-
-    }
-
-
-
+function buildPdfViaMain(imagesTempFolder, pageCount, pdfPath) {
     return new Promise((resolve, reject) => {
-
-        const blob = new Blob([raw], { type: 'image/webp' });
-
-        const url = URL.createObjectURL(blob);
-
-        const img = new Image();
-
-        img.onload = () => {
-
-            const canvas = document.createElement('canvas');
-
-            canvas.width = img.naturalWidth;
-
-            canvas.height = img.naturalHeight;
-
-            canvas.getContext('2d').drawImage(img, 0, 0);
-
-            URL.revokeObjectURL(url);
-
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-
-            resolve(Buffer.from(dataUrl.split(',')[1], 'base64'));
-
-        };
-
-        img.onerror = () => {
-
-            URL.revokeObjectURL(url);
-
-            reject(new Error(`Failed to decode image: ${path.basename(filePath)}`));
-
-        };
-
-        img.src = url;
-
+        ipcRenderer.once('build-pdf-reply', (event, err) => {
+            if (err) {
+                reject(new Error(err));
+            } else {
+                resolve(pdfPath);
+            }
+        });
+        ipcRenderer.send('build-pdf', { imagesTempFolder, pageCount, pdfPath });
     });
-
 }
-
-
-
-function getImageSizeFromBuffer(buffer) {
-
-    return new Promise((resolve, reject) => {
-
-        const blob = new Blob([buffer], { type: 'image/jpeg' });
-
-        const url = URL.createObjectURL(blob);
-
-        const img = new Image();
-
-        img.onload = () => {
-
-            URL.revokeObjectURL(url);
-
-            resolve({ width: img.naturalWidth, height: img.naturalHeight });
-
-        };
-
-        img.onerror = () => {
-
-            URL.revokeObjectURL(url);
-
-            reject(new Error('Failed to read image dimensions.'));
-
-        };
-
-        img.src = url;
-
-    });
-
-}
-
-
 
 async function downloadButtonClicked() {
 
-    downloadButton.disabled = true;
+    hidePanels();
+    showWorking('Kitap bilgisi alınıyor…', 'URL doğrulanıyor ve yapılandırma okunuyor.');
 
     try {
 
@@ -530,6 +564,8 @@ async function downloadButtonClicked() {
         console.log(`Pages - ${range.start}–${range.end} (${length} of ${totalPages})`);
         console.log(`Filename - ${filename}`);
 
+        setProgress('download', 0, length, 'Sayfalar indiriliyor…', `${length} sayfa indirilecek.`);
+
         imagesTempFolder = baseDir + titleBase + '/';
 
         if (!fs.existsSync(imagesTempFolder)) {
@@ -544,8 +580,6 @@ async function downloadButtonClicked() {
 
         showError(err.message || String(err));
 
-        downloadButton.disabled = false;
-
     }
 
 }
@@ -559,6 +593,7 @@ let done = false;
 function* downloadAll(urls) {
 
     done = false;
+    downloadedCount = 0;
 
     for (let i = 0; i < urls.length; i++) {
 
@@ -578,11 +613,24 @@ function* downloadAll(urls) {
 
 
 
+let downloadedCount = 0;
+
 function download(url, outName) {
+
+    const pageIndex = downloadedCount + 1;
 
     request(url).pipe(fs.createWriteStream(imagesTempFolder + outName)).on('close', () => {
 
         if (!done) {
+
+            downloadedCount += 1;
+            setProgress(
+                'download',
+                downloadedCount,
+                length,
+                'Sayfalar indiriliyor…',
+                `Sayfa ${pageRangeStart + downloadedCount - 1} indirildi (${downloadedCount}/${length}).`
+            );
 
             const resp = downloader.next();
 
@@ -596,8 +644,6 @@ function download(url, outName) {
 
                     showError(err.message || String(err));
 
-                    downloadButton.disabled = false;
-
                 });
 
             }
@@ -606,9 +652,7 @@ function download(url, outName) {
 
     }).on('error', (err) => {
 
-        showError(`Download failed: ${err.message}`);
-
-        downloadButton.disabled = false;
+        showError(`İndirme başarısız: ${err.message}`);
 
     });
 
@@ -619,84 +663,13 @@ function download(url, outName) {
 async function convertToPDF() {
 
     console.log('Creating the PDF');
+    setProgress('pdf', 0, length, 'PDF oluşturuluyor…', 'Sayfalar birleştiriliyor.');
 
-    let doc;
-
-
-
-    for (let i = 0; i < length; i++) {
-
-        console.log(`Adding image ${i + 1}/${length}`);
-
-        const files = fs.readdirSync(imagesTempFolder).filter((f) => f.startsWith(`${i + 1}.`));
-
-        if (!files.length) {
-
-            throw new Error(`Missing downloaded file for page ${i + 1}.`);
-
-        }
-
-        const imgPath = imagesTempFolder + files[0];
-
-        const imgBuffer = await imageBufferForPdf(imgPath);
-
-        const imgSize = await getImageSizeFromBuffer(imgBuffer);
-
-
-
-        if (!i) {
-
-            doc = new PDFKit({
-
-                size: [imgSize.width, imgSize.height],
-
-            });
-
-            doc.pipe(fs.createWriteStream(baseDir + filename));
-
-        } else {
-
-            doc.addPage({
-
-                size: [imgSize.width, imgSize.height],
-
-            });
-
-        }
-
-        doc.image(imgBuffer, 0, 0, {
-
-            fit: [imgSize.width, imgSize.height],
-
-            align: 'center',
-
-            valign: 'center',
-
-        });
-
-        fs.unlinkSync(imgPath);
-
-    }
-
-
+    const pdfPath = baseDir + filename;
+    await buildPdfViaMain(imagesTempFolder, length, pdfPath);
 
     console.log('Done creating PDF');
-
-    doc.end();
-
-    try {
-
-        fs.rmdirSync(imagesTempFolder);
-
-    } catch (err) {
-
-        console.warn('Could not remove temp folder:', err.message);
-
-    }
-
-    downloadButton.disabled = false;
-
-    alert(`PDF saved as ${filename}`);
+    showSuccess(pdfPath, filename);
 
 }
 
