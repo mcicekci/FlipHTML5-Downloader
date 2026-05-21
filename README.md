@@ -6,7 +6,8 @@ Orijinal proje: [KoStard/FlipHTML5-Downloader](https://github.com/KoStard/FlipHT
 
 ## Özellikler
 
-- Türkçe arayüz: kitap URL’si, sayfa aralığı ve **PDF Oluştur** düğmesi
+- Çoklu dil arayüzü (Türkçe, English, Español, Deutsch, Русский, 中文, العربية): sağ üstten dil seçimi; Arapça RTL düzeni; tercih `localStorage`’da saklanır
+- Kitap URL’si, sayfa aralığı ve **PDF Oluştur** düğmesi
 - İşlem sırasında ilerleme çubuğu (kitap bilgisi → sayfa indirme → PDF birleştirme)
 - PDF hazır olunca **PDF'i Aç**, **Klasörde Göster** ve **Farklı Kaydet…** seçenekleri
 - FlipHTML5 kitap URL’sinden otomatik sayfa listesi ve başlık okuma
@@ -91,6 +92,10 @@ https://online.fliphtml5.com/kullanici/kitap-adi/
 | `view.js` | Arayüz, sayfa indirme, ilerleme ve sonuç paneli |
 | `index.html` | Form, ilerleme ve sonuç bileşenleri |
 | `style.css` | Arayüz stilleri |
+| `i18n.js` | Dil yükleme ve çeviri (`t`) |
+| `locales/*.json` | Arayüz metinleri (`tr`, `en`, `es`, `de`, `ru`, `zh`, `ar`) |
+
+Yeni dil eklemek için `locales/` altına aynı anahtarlarla bir JSON dosyası ekleyin ve `i18n.js` içindeki `SUPPORTED` dizisine dil kodunu yazın.
 
 ## Sık karşılaşılan sorunlar
 

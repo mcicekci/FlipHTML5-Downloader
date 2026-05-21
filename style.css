@@ -23,12 +23,52 @@ body {
     margin-bottom: 24px;
 }
 
+.app-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
 .app-header h1 {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 1.65rem;
     font-weight: 700;
     color: #16213e;
     letter-spacing: -0.02em;
+    text-align: left;
+    flex: 1;
+}
+
+.lang-switcher {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.lang-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.lang-select {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #334155;
+    background: #fff;
+    cursor: pointer;
+}
+
+.lang-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .app-subtitle {
@@ -278,4 +318,21 @@ body {
     font-size: 0.8rem;
     color: #94a3b8;
     line-height: 1.45;
+}
+
+[dir="rtl"] body {
+    font-family: "Segoe UI", "Segoe UI Arabic", Tahoma, Arial, sans-serif;
+}
+
+[dir="rtl"] .app-header h1 {
+    text-align: right;
+}
+
+[dir="rtl"] .lang-switcher {
+    align-items: flex-start;
+}
+
+[dir="rtl"] .progress-header,
+[dir="rtl"] .result-success {
+    flex-direction: row-reverse;
 }

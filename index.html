@@ -1,4 +1,4 @@
-﻿<html lang="tr">
+﻿<html lang="tr" data-i18n-title="app.title">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,32 +11,49 @@
 <body>
     <div class="app">
         <header class="app-header">
-            <h1>FlipHTML5 Downloader</h1>
-            <p class="app-subtitle">Flipbook sayfalarını tek bir PDF dosyasına dönüştürün</p>
+            <div class="app-header-top">
+                <h1 data-i18n="app.title">FlipHTML5 Downloader</h1>
+                <div class="lang-switcher">
+                    <label for="lang-select" class="lang-label" data-i18n="lang.label">Dil</label>
+                    <select id="lang-select" class="lang-select" aria-label="Language">
+                        <option value="tr">Türkçe</option>
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                        <option value="de">Deutsch</option>
+                        <option value="ru">Русский</option>
+                        <option value="zh">中文</option>
+                        <option value="ar">العربية</option>
+                    </select>
+                </div>
+            </div>
+            <p class="app-subtitle" data-i18n="app.subtitle">Flipbook sayfalarını tek bir PDF dosyasına dönüştürün</p>
         </header>
 
         <main class="app-card">
             <div class="form-group">
-                <label for="url-input">Kitap URL'si</label>
-                <input type="text" class="form-control" id="url-input" placeholder="https://online.fliphtml5.com/kullanici/kitap-adi/">
+                <label for="url-input" data-i18n="url.label">Kitap URL'si</label>
+                <input type="text" class="form-control" id="url-input" data-i18n-placeholder="url.placeholder" placeholder="https://online.fliphtml5.com/kullanici/kitap-adi/">
             </div>
 
             <div class="form-group">
-                <label for="page-from">Sayfa aralığı <span class="label-hint">(boş = tüm sayfalar)</span></label>
+                <label for="page-from">
+                    <span data-i18n="pageRange.label">Sayfa aralığı</span>
+                    <span class="label-hint" data-i18n="pageRange.hint">(boş = tüm sayfalar)</span>
+                </label>
                 <div class="page-range-row">
-                    <input type="number" class="form-control" id="page-from" min="1" placeholder="Başlangıç">
+                    <input type="number" class="form-control" id="page-from" min="1" data-i18n-placeholder="pageRange.fromPlaceholder" placeholder="Başlangıç">
                     <span class="page-range-sep">–</span>
-                    <input type="number" class="form-control" id="page-to" min="1" placeholder="Bitiş">
+                    <input type="number" class="form-control" id="page-to" min="1" data-i18n-placeholder="pageRange.toPlaceholder" placeholder="Bitiş">
                 </div>
             </div>
 
             <button type="button" class="btn btn-primary btn-download" id="download-button">
-                <span class="btn-label">PDF Oluştur</span>
+                <span class="btn-label" data-i18n="btn.createPdf">PDF Oluştur</span>
             </button>
 
             <section id="progress-panel" class="progress-panel hidden" aria-live="polite">
                 <div class="progress-header">
-                    <span id="progress-status">Hazırlanıyor…</span>
+                    <span id="progress-status" data-i18n="progress.preparing">Hazırlanıyor…</span>
                     <span id="progress-fraction" class="progress-fraction"></span>
                 </div>
                 <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -49,14 +66,14 @@
                 <div class="result-success">
                     <span class="result-icon" aria-hidden="true">✓</span>
                     <div>
-                        <p class="result-title">PDF hazır</p>
+                        <p class="result-title" data-i18n="result.ready">PDF hazır</p>
                         <p id="result-filename" class="result-filename"></p>
                     </div>
                 </div>
                 <div class="result-actions">
-                    <button type="button" class="btn btn-success" id="open-pdf-button">PDF'i Aç</button>
-                    <button type="button" class="btn btn-outline" id="show-folder-button">Klasörde Göster</button>
-                    <button type="button" class="btn btn-outline" id="save-as-button">Farklı Kaydet…</button>
+                    <button type="button" class="btn btn-success" id="open-pdf-button" data-i18n="btn.openPdf">PDF'i Aç</button>
+                    <button type="button" class="btn btn-outline" id="show-folder-button" data-i18n="btn.showFolder">Klasörde Göster</button>
+                    <button type="button" class="btn btn-outline" id="save-as-button" data-i18n="btn.saveAs">Farklı Kaydet…</button>
                 </div>
             </section>
 
@@ -66,7 +83,7 @@
         </main>
 
         <footer class="app-footer">
-            <p>Çıktı dosyası uygulama klasörüne kaydedilir. İşlem bitince PDF'i açabilir veya başka bir konuma kopyalayabilirsiniz.</p>
+            <p data-i18n="footer.hint">Çıktı dosyası uygulama klasörüne kaydedilir. İşlem bitince PDF'i açabilir veya başka bir konuma kopyalayabilirsiniz.</p>
         </footer>
     </div>
     <script src="view.js"></script>

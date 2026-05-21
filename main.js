@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { app, BrowserWindow, ipcMain } = require('electron');
+const i18n = require('./i18n');
 const PDFKit = require('pdfkit');
 const sizeOf = require('image-size');
 
@@ -19,7 +20,7 @@ new Promise((resolve, reject) => {
     canvas.getContext('2d').drawImage(img, 0, 0);
     resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
   };
-  img.onerror = () => reject(new Error('WebP görseli çözülemedi.'));
+  img.onerror = () => reject(new Error(__WEBP_ERR__));
   img.src = 'data:image/webp;base64,' + __B64__;
 });
 `;
@@ -44,7 +45,9 @@ function webpToJpegBuffer(filePath) {
     const raw = fs.readFileSync(filePath);
     const b64 = raw.toString('base64');
     const wwin = getWebpWindow();
-    const script = WEBP_TO_JPEG_SCRIPT.replace('__B64__', JSON.stringify(b64));
+    const script = WEBP_TO_JPEG_SCRIPT
+        .replace('__B64__', JSON.stringify(b64))
+        .replace('__WEBP_ERR__', JSON.stringify(i18n.t('errors.webpDecode')));
     return new Promise((resolve) => {
         if (wwin.webContents.isLoading()) {
             wwin.webContents.once('did-finish-load', resolve);
@@ -66,7 +69,7 @@ function imageBufferForPdf(filePath) {
 function getImageSize(buffer) {
     const dims = sizeOf(buffer);
     if (!dims || !dims.width || !dims.height) {
-        throw new Error('Görsel boyutları okunamadı.');
+        throw new Error(i18n.t('errors.imageSize'));
     }
     return { width: dims.width, height: dims.height };
 }
@@ -78,7 +81,7 @@ async function buildPdf(imagesTempFolder, pageCount, pdfPath) {
     for (let i = 0; i < pageCount; i++) {
         const files = fs.readdirSync(imagesTempFolder).filter((f) => f.startsWith(`${i + 1}.`));
         if (!files.length) {
-            throw new Error(`İndirilen dosya bulunamadı: sayfa ${i + 1}.`);
+            throw new Error(i18n.t('errors.downloadedFileMissing', { page: i + 1 }));
         }
         const imgPath = path.join(imagesTempFolder, files[0]);
         const imgBuffer = await imageBufferForPdf(imgPath);
@@ -207,6 +210,10 @@ function createWindow() {
     });
 }
 
+ipcMain.on('set-locale', (event, locale) => {
+    i18n.setLocale(locale);
+});
+
 ipcMain.on('decrypt-fliphtml5', (event, encrypted) => {
     runDecrypt(encrypted)
         .then((decoded) => {
@@ -229,6 +236,7 @@ ipcMain.on('build-pdf', (event, payload) => {
 });
 
 app.on('ready', () => {
+    i18n.init();
     getDecryptWindow();
     getWebpWindow();
     createWindow();

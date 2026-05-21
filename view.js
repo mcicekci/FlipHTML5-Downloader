@@ -1,21 +1,16 @@
 ﻿/* jshint esversion: 6 */
 
 if (typeof require === 'undefined') {
-
     alert('This app must be run with Electron. From the project folder run: npm install && npm start');
-
     throw new Error('Node require() is not available in the browser. Use npm start.');
-
 }
 
 const fs = require('fs');
-
 const path = require('path');
-
 const request = require('request');
-
 const { ipcRenderer, shell, remote } = require('electron');
 const dialog = remote.dialog;
+const i18n = require('./i18n');
 
 const urlInput = document.getElementById('url-input');
 const pageFromInput = document.getElementById('page-from');
@@ -34,6 +29,7 @@ const errorMessage = document.getElementById('error-message');
 const openPdfButton = document.getElementById('open-pdf-button');
 const showFolderButton = document.getElementById('show-folder-button');
 const saveAsButton = document.getElementById('save-as-button');
+const langSelect = document.getElementById('lang-select');
 
 const baseDir = __dirname + '/';
 let lastPdfPath = '';
@@ -42,6 +38,18 @@ let progressCurrent = 0;
 let progressTotal = 0;
 
 
+
+i18n.init();
+ipcRenderer.send('set-locale', i18n.getLocale());
+if (langSelect) {
+    langSelect.value = i18n.getLocale();
+    langSelect.addEventListener('change', () => {
+        i18n.setLocale(langSelect.value);
+        ipcRenderer.send('set-locale', langSelect.value);
+        refreshUiLabels();
+    });
+}
+i18n.applyToDocument();
 
 downloadButton.onclick = downloadButtonClicked;
 openPdfButton.onclick = () => openPdf(lastPdfPath);
@@ -92,16 +100,25 @@ function setProgress(phase, current, total, statusText, detailText) {
     }
 }
 
-function setDownloadButtonLabel(text) {
+function setDownloadButtonLabel(key) {
     const label = downloadButton.querySelector('.btn-label');
     if (label) {
-        label.textContent = text;
+        label.textContent = i18n.t(key);
+    }
+}
+
+function refreshUiLabels() {
+    i18n.applyToDocument();
+    if (!downloadButton.disabled) {
+        setDownloadButtonLabel('btn.createPdf');
+    } else {
+        setDownloadButtonLabel('btn.processing');
     }
 }
 
 function showWorking(statusText, detailText) {
     downloadButton.disabled = true;
-    setDownloadButtonLabel('İşleniyor…');
+    setDownloadButtonLabel('btn.processing');
     hidePanels();
     setProgress('working', 0, 0, statusText, detailText);
     progressPanel.classList.remove('hidden');
@@ -110,7 +127,7 @@ function showWorking(statusText, detailText) {
 function showSuccess(pdfPath, displayName) {
     lastPdfPath = pdfPath;
     downloadButton.disabled = false;
-    setDownloadButtonLabel('PDF Oluştur');
+    setDownloadButtonLabel('btn.createPdf');
     progressPanel.classList.add('hidden');
     errorPanel.classList.add('hidden');
     resultFilename.textContent = displayName;
@@ -120,7 +137,7 @@ function showSuccess(pdfPath, displayName) {
 function showError(message) {
     console.error(message);
     downloadButton.disabled = false;
-    setDownloadButtonLabel('PDF Oluştur');
+    setDownloadButtonLabel('btn.createPdf');
     progressPanel.classList.add('hidden');
     resultPanel.classList.add('hidden');
     errorMessage.textContent = message;
@@ -129,7 +146,7 @@ function showError(message) {
 
 function openPdf(pdfPath) {
     if (!pdfPath || !fs.existsSync(pdfPath)) {
-        showError('PDF dosyası bulunamadı.');
+        showError(i18n.t('errors.pdfNotFound'));
         return;
     }
     shell.openItem(pdfPath);
@@ -137,7 +154,7 @@ function openPdf(pdfPath) {
 
 function showPdfInFolder(pdfPath) {
     if (!pdfPath || !fs.existsSync(pdfPath)) {
-        showError('PDF dosyası bulunamadı.');
+        showError(i18n.t('errors.pdfNotFound'));
         return;
     }
     shell.showItemInFolder(pdfPath);
@@ -145,12 +162,12 @@ function showPdfInFolder(pdfPath) {
 
 function savePdfAs(pdfPath) {
     if (!pdfPath || !fs.existsSync(pdfPath)) {
-        showError('PDF dosyası bulunamadı.');
+        showError(i18n.t('errors.pdfNotFound'));
         return;
     }
     const dest = dialog.showSaveDialog({
         defaultPath: path.basename(pdfPath),
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        filters: [{ name: i18n.t('dialog.savePdf'), extensions: ['pdf'] }],
     });
     if (!dest) {
         return;
@@ -160,7 +177,7 @@ function savePdfAs(pdfPath) {
         lastPdfPath = dest;
         resultFilename.textContent = path.basename(dest);
     } catch (err) {
-        showError(`Kaydedilemedi: ${err.message}`);
+        showError(i18n.t('errors.saveFailed', { message: err.message }));
     }
 }
 
@@ -176,13 +193,13 @@ function parsePageRange(totalPages) {
     const end = toRaw ? parseInt(toRaw, 10) : totalPages;
 
     if (!Number.isFinite(start) || !Number.isFinite(end) || start < 1 || end < 1) {
-        throw new Error('Sayfa numaraları geçerli pozitif sayılar olmalıdır.');
+        throw new Error(i18n.t('errors.pageNumbersInvalid'));
     }
     if (start > end) {
-        throw new Error('Başlangıç sayfası bitiş sayfasından büyük olamaz.');
+        throw new Error(i18n.t('errors.pageStartAfterEnd'));
     }
     if (start > totalPages || end > totalPages) {
-        throw new Error(`Sayfa aralığı 1–${totalPages} arasında olmalıdır.`);
+        throw new Error(i18n.t('errors.pageRangeOutOfBounds', { max: totalPages }));
     }
 
     return { start, end };
@@ -240,9 +257,7 @@ function normalizeBookUrl(rawURL) {
     const trimmed = (rawURL || '').trim();
 
     if (!trimmed) {
-
-        throw new Error('Please enter a FlipHTML5 book URL.');
-
+        throw new Error(i18n.t('errors.urlEmpty'));
     }
 
     const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
@@ -250,9 +265,7 @@ function normalizeBookUrl(rawURL) {
     const match = withScheme.match(/^(https?:\/\/[^/]+\/[^/]+\/[^/]+)\/?/i);
 
     if (!match) {
-
-        throw new Error('URL must look like https://online.fliphtml5.com/user/book/');
-
+        throw new Error(i18n.t('errors.urlFormat'));
     }
 
     return `${match[1]}/`;
@@ -444,9 +457,7 @@ async function resolvePageUrls(bookUrl, config, html) {
         const pages = JSON.parse(decoded);
 
         if (!Array.isArray(pages)) {
-
-            throw new Error('Decrypted FlipHTML5 page list is invalid.');
-
+            throw new Error(i18n.t('errors.decryptInvalid'));
         }
 
         return pages.map((page) => {
@@ -470,9 +481,7 @@ async function resolvePageUrls(bookUrl, config, html) {
         const hostMatch = bookUrl.match(/^https?:\/\/([^/]+)\/(.+)$/i);
 
         if (!hostMatch) {
-
-            throw new Error('Could not build legacy image URLs from this book URL.');
-
+            throw new Error(i18n.t('errors.legacyUrls'));
         }
 
         const legacyBase = `http://online.${hostMatch[1]}/${hostMatch[2]}files/large/`;
@@ -491,8 +500,7 @@ async function resolvePageUrls(bookUrl, config, html) {
 
 
 
-    throw new Error('Could not find page images in this FlipHTML5 book. The site format may have changed.');
-
+    throw new Error(i18n.t('errors.pagesNotFound'));
 }
 
 
@@ -513,7 +521,8 @@ function buildPdfViaMain(imagesTempFolder, pageCount, pdfPath) {
 async function downloadButtonClicked() {
 
     hidePanels();
-    showWorking('Kitap bilgisi alınıyor…', 'URL doğrulanıyor ve yapılandırma okunuyor.');
+    ipcRenderer.send('set-locale', i18n.getLocale());
+    showWorking(i18n.t('progress.fetchingBook'), i18n.t('progress.validatingUrl'));
 
     try {
 
@@ -532,9 +541,7 @@ async function downloadButtonClicked() {
         length = getPageCount(config);
 
         if (!length) {
-
-            throw new Error('Could not determine the number of pages for this book.');
-
+            throw new Error(i18n.t('errors.pageCountUnknown'));
         }
 
 
@@ -544,9 +551,7 @@ async function downloadButtonClicked() {
         pageUrls = await resolvePageUrls(bookUrl, config, html);
 
         if (!pageUrls.length) {
-
-            throw new Error('No page image URLs were found for this book.');
-
+            throw new Error(i18n.t('errors.noPageUrls'));
         }
 
         const totalPages = Math.min(length, pageUrls.length);
@@ -564,7 +569,13 @@ async function downloadButtonClicked() {
         console.log(`Pages - ${range.start}–${range.end} (${length} of ${totalPages})`);
         console.log(`Filename - ${filename}`);
 
-        setProgress('download', 0, length, 'Sayfalar indiriliyor…', `${length} sayfa indirilecek.`);
+        setProgress(
+            'download',
+            0,
+            length,
+            i18n.t('progress.downloadingPages'),
+            i18n.t('progress.pagesToDownload', { count: length })
+        );
 
         imagesTempFolder = baseDir + titleBase + '/';
 
@@ -628,8 +639,12 @@ function download(url, outName) {
                 'download',
                 downloadedCount,
                 length,
-                'Sayfalar indiriliyor…',
-                `Sayfa ${pageRangeStart + downloadedCount - 1} indirildi (${downloadedCount}/${length}).`
+                i18n.t('progress.downloadingPages'),
+                i18n.t('progress.pageDownloaded', {
+                    page: pageRangeStart + downloadedCount - 1,
+                    current: downloadedCount,
+                    total: length,
+                })
             );
 
             const resp = downloader.next();
@@ -652,7 +667,7 @@ function download(url, outName) {
 
     }).on('error', (err) => {
 
-        showError(`İndirme başarısız: ${err.message}`);
+        showError(i18n.t('errors.downloadFailed', { message: err.message }));
 
     });
 
@@ -663,7 +678,7 @@ function download(url, outName) {
 async function convertToPDF() {
 
     console.log('Creating the PDF');
-    setProgress('pdf', 0, length, 'PDF oluşturuluyor…', 'Sayfalar birleştiriliyor.');
+    setProgress('pdf', 0, length, i18n.t('progress.creatingPdf'), i18n.t('progress.mergingPages'));
 
     const pdfPath = baseDir + filename;
     await buildPdfViaMain(imagesTempFolder, length, pdfPath);
