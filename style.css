@@ -1,5 +1,19 @@
-body {
+﻿body {
     padding: 20px;    
+}
+
+.page-range-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.page-range-row .form-control {
+    flex: 1;
+}
+
+.page-range-sep {
+    color: #666;
 }
 
 button {
